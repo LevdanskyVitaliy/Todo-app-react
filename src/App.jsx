@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import TaskItem from './TaskItem';
 import Calendar from 'react-calendar'
+import MiniSearch from 'minisearch'
 import 'react-calendar/dist/Calendar.css';
 
 class Api {
@@ -55,7 +56,8 @@ function App() {
   
   const [totalCount, setTotalCount] = useState(0)
   const [showUndoneOnly, setShowUndoneOnly ] = useState(false);
-  const [searchQuery, setSearchGuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([])
 
 const filter = {done : false }
 
@@ -88,7 +90,24 @@ useEffect(() => {
     document.body.classList.add('bg-gray-900');
   }, []);
 
+  const miniSearch = useMemo(() =>(
+    new MiniSearch({
+      fields: ['name'],
+      storeFields: ['id', 'name', 'description', 'done', 'date'],
+       searchOptions: {
+          fuzzy: 0.2,         
+          prefix: true       
+        }
+    })
+      ), [todos]);
 
+useEffect(() => {
+  miniSearch.removeAll()
+  miniSearch.addAll(todos)
+}, [todos, miniSearch]);
+
+
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -175,7 +194,22 @@ const List = ()=>{
 
 
 
-  return(
+  return searchQuery ? (
+    <div className='max-w-xl md:max-w-2xl w-full mr-5 mx-auto '>
+    <ul className="list-none">
+        {searchResults.map(todo => (
+          <li key={todo.id}>
+            <TaskItem
+              todo={todo}
+              toggleDone={toggleDone}
+              toggleUpdate={toggleUpdate}
+              handleDelete={handleDelete}
+            />
+          </li>
+        ))}
+      </ul> 
+    </div>)   
+ :(
     <div className='max-w-xl md:max-w-2xl w-full mr-5 mx-auto '>
      <ul>
      {unDoneTodoList.map((todo) => 
@@ -234,11 +268,26 @@ return (
 
 
     <div className="md:w-1/2 mx-10">
-    <div className='filterSS md:mt-0 mt-10 mb-1 flex justify-end  items-center text-white mx-10'>
-    <p className="text-xl sm:text-2xl font-bold text-white md:text-2xl mx-auto">To-Do List</p> 
-      <p className='font-bold'>Show Undone:</p>
-      <input className='Checkbox ml-2' type="checkbox" name="filterUnDone" checked={showUndoneOnly}  onChange={handleFilterToggle}/>
-    </div>
+    <div className='filterSS md:mt-0 mt-10 mb-1 flex justify-between items-center text-white mx-10'>
+      <input
+  type="text"
+  className="bg-transparent border-b-1 border-b-gray-500 focus:outline-none py-2 max-w-xs"
+  placeholder="Search todos..."
+  value={searchQuery}
+  onChange={e => {
+  setSearchQuery(e.target.value)
+    if (e.target.value.trim()) {
+      setSearchResults(miniSearch.search(e.target.value))
+    } else {
+      setSearchResults([])
+    }
+  }}
+/>
+      <div className='justify-between gap-1 items-center flex'>
+        <p className='font-bold'>Show Undone:</p>
+        <input className='Checkbox ml-2' type="checkbox" name="filterUnDone" checked={showUndoneOnly}  onChange={handleFilterToggle}/>
+      </div>
+    </div>  
       <List/>
       </div>
       </div>
