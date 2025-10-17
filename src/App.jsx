@@ -239,9 +239,6 @@ return (
       <p className='font-bold'>Show Undone:</p>
       <input className='Checkbox ml-2' type="checkbox" name="filterUnDone" checked={showUndoneOnly}  onChange={handleFilterToggle}/>
     </div>
-      {/* <div className='max-w-xl md:max-w-2xl w-full mr-5 mx-auto '> */}
-        {/* <ul>{ListItems}</ul> */}
-      {/* </div > */}
       <List/>
       </div>
       </div>
