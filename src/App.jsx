@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import TaskItem from './TaskItem';
-import Calendar from 'react-calendar'
 import MiniSearch from 'minisearch'
-import 'react-calendar/dist/Calendar.css';
+import { DayPicker } from "react-day-picker";
+import "react-day-picker/style.css";
 
 class Api {
   static #baseUrl = "http://localhost:3000"
@@ -16,6 +16,7 @@ class Api {
   static async createTodo(todo) {
     const response = await fetch(`${Api.#baseUrl}/todos`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(todo),
     })
     return await response.json()
@@ -57,13 +58,16 @@ function App() {
   const [totalCount, setTotalCount] = useState(0)
   const [showUndoneOnly, setShowUndoneOnly ] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([])
+  const [searchResults, setSearchResults] = useState([]);
+  
+  const [selected, setSelected] = useState(undefined);
+
 
 const filter = {done : false }
 
-
   useEffect(() => {
     async function fetchTodos () {
+     
       if(showUndoneOnly){
         const filteredTodos = await Api.getTodos(filter);
         setTodos(filteredTodos);
@@ -86,6 +90,8 @@ const filter = {done : false }
   }, []);
 
 
+  
+
 useEffect(() => {
     document.body.classList.add('bg-gray-900');
   }, []);
@@ -106,8 +112,6 @@ useEffect(() => {
   miniSearch.addAll(todos)
 }, [todos, miniSearch]);
 
-
-  
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -157,10 +161,59 @@ useEffect(() => {
   };
 
 
+const MyDatePicker = ()=> {
+    
+  function formatoYMD(dateString) {
+    const dt = new Date(dateString);
+    const year = dt.getUTCFullYear();
+    const month = String(dt.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(dt.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+   
+   const isSameDate = (dateTimeString, dateOnlyString)=> {
+      return formatoYMD(dateTimeString) === dateOnlyString;
+    }
+      
+
+    const handleSelect = async (day) =>  {
+    setSelected(day)
+
+    if(!day){
+      const allTodos = await Api.getTodos();
+      setTodos(allTodos);
+     
+      return;
+    }
+    
+     const jsonTime =  formatoYMD(day);
+    
+    const allTodos = await Api.getTodos();
+    const filteredTodos = allTodos.filter(todo => 
+      isSameDate(todo.date, jsonTime )
+    );
+    setTodos(filteredTodos);
+
+
+     }
+
+    return (
+      <div className="text-white ">
+      <p className="text-md font-semibold text-gray-500">Selected date: {selected ? selected.toLocaleDateString() : "All time tasks"}</p> 
+      <DayPicker
+      timeZone="UTC" 
+       mode="single"
+       selected={selected}
+       onSelect={handleSelect}
+      />
+     </div> 
+    );
+  }
+
  const DateTasks = () =>{
-  return (<div className='mx-auto items-center md:m-2 m-5 '> 
+  return (<div className='mx-auto justify-center items-center md:m-1 m-5 '> 
       <p className="mt-auto text-md text-white md:text-xl ">
-          List of tasks contain - <span className={totalCount !== 0 ? 'text-red-500' : 'text-green-500'}>{totalCount}</span> items</p>
+          List contains - <span className={totalCount !== 0 ? 'text-red-500' : 'text-green-500'}>{totalCount}</span> items</p>
 </div> )
 }
   
@@ -182,55 +235,41 @@ const handleFilterToggle = () => {
     setShowUndoneOnly(prev => !prev);
 }
 
+
+const renderFilteredTodos = (filtered) => {
+  if (!filtered.length) return <p className="text-white text-center">No todos found.</p>;
+  return (
+    <ul className="max-w-xl md:max-w-2xl w-full mr-5 mx-auto list-none">
+      {filtered.map(todo => (
+        <li key={todo.id}>
+          <TaskItem 
+            todo={todo} 
+            toggleDone={toggleDone} 
+            toggleUpdate={toggleUpdate} 
+            handleDelete={handleDelete} 
+          />
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+
 const List = ()=>{
-  const unDoneTodoList = todos.filter(todo =>
-    todo.done === false
-  );
-
-  const everyotherTodoList = todos.filter(todo =>
-    todo.done === true
-  );
-
-
-
+  const unDoneTodoList = todos.filter(todo => todo.done === false);
+  const everyotherTodoList = todos.filter(todo =>todo.done === true);
 
   return searchQuery ? (
     <div className='max-w-xl md:max-w-2xl w-full mr-5 mx-auto '>
     <ul className="list-none">
-        {searchResults.map(todo => (
-          <li key={todo.id}>
-            <TaskItem
-              todo={todo}
-              toggleDone={toggleDone}
-              toggleUpdate={toggleUpdate}
-              handleDelete={handleDelete}
-            />
-          </li>
-        ))}
+    {renderFilteredTodos(searchResults)}
       </ul> 
     </div>)   
  :(
     <div className='max-w-xl md:max-w-2xl w-full mr-5 mx-auto '>
      <ul>
-     {unDoneTodoList.map((todo) => 
-      <li> <TaskItem
-        key = {todo.id}
-        todo = {todo}
-        toggleDone = {toggleDone}
-        toggleUpdate={toggleUpdate}
-        handleDelete = {handleDelete}
-      />
-      </li>)}
-
-      {everyotherTodoList.map((todo) => 
-      <li> <TaskItem
-        key = {todo.id}
-        todo = {todo}
-        toggleDone = {toggleDone}
-        toggleUpdate={toggleUpdate}
-        handleDelete = {handleDelete}
-      />
-      </li>)}
+      {renderFilteredTodos(unDoneTodoList)}      
+      {renderFilteredTodos(everyotherTodoList)}
       </ul>
     </div>
   )
@@ -239,10 +278,10 @@ const List = ()=>{
  
 return (   
 <CenteredContainer  size={50}>  
-<div className="md:flex gap-20 py-10 ">
+<div className="md:flex gap-20 py-10">
    
-<div className="md:w-3/8">
-  <div className="md:full md:fixed flex flex-col  border-solid border-1 border-white rounded-xl mt-10 px-5 md:pb-20 mx-10">  
+<div className="md:w-3/8  ">
+  <div className="md:full md:fixed flex-col  border-solid border-1 border-white rounded-xl px-8 md:pb-40 mx-7 ">  
     <form className="my-3 flex flex-col justify-between gap-1" onSubmit={handleSubmit}>
       <input className="bg-white hover:bg-gray-100 p-5 mb-1 rounded-lg md:w-full w-2/3 mx-auto" type="text" name="todoName"
         placeholder="Enter your task"
@@ -260,12 +299,10 @@ return (
     </form>   
     <DateTasks/>
     <div className='hidden md:block' style={{ width: '270px', height: '200px', margin: '0 auto'}}>
-      <style>{`.react-calendar { font-size: 0.8rem; border-radius: 1rem;}`}</style>
-      <Calendar />
+      <MyDatePicker/>
     </div> 
   </div>
 </div>
-
 
     <div className="md:w-1/2 mx-10">
     <div className='filterSS md:mt-0 mt-10 mb-1 flex justify-between items-center text-white mx-10'>

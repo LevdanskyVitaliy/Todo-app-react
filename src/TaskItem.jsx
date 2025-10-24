@@ -3,6 +3,7 @@ import { FaPencilAlt } from 'react-icons/fa';
 import React, { useState, memo } from 'react';
 
 
+
 const  TaskItem = memo(function TaskItem({todo, toggleDone, toggleUpdate, handleDelete}){
 const [isExpanded, setIsExpanded] = useState(false);
 const [textEdit, setTextEdit] = useState('');
